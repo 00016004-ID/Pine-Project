@@ -12,9 +12,9 @@ input double InpRiskPercent     = 2.0;   // Risk percent per trade (unused place
 input double InpRRRatio         = 5.0;   // Risk reward ratio (unused placeholder to mirror Pine inputs)
 input double InpTrailingPercent = 5.0;   // Trailing stop percent
 
-const int WINDOW_SIZE    = 500;
-const int LOOKBACK_LEN   = 499;
-const int REQUIRED_BARS  = WINDOW_SIZE + LOOKBACK_LEN;
+#define WINDOW_SIZE   500
+#define LOOKBACK_LEN  499
+#define REQUIRED_BARS (WINDOW_SIZE + LOOKBACK_LEN)
 
 CTrade trade;
 
@@ -212,7 +212,11 @@ int CountPositions(const int type)
       if(!PositionSelectByIndex(i))
          continue;
 
-      if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+      string position_symbol = "";
+      if(!PositionGetString(POSITION_SYMBOL, position_symbol))
+         continue;
+
+      if(position_symbol != _Symbol)
          continue;
 
       if((int)PositionGetInteger(POSITION_TYPE) == type)
@@ -242,7 +246,11 @@ void ManageTrailingStops()
       if(!PositionSelectByIndex(i))
          continue;
 
-      if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+      string position_symbol = "";
+      if(!PositionGetString(POSITION_SYMBOL, position_symbol))
+         continue;
+
+      if(position_symbol != _Symbol)
          continue;
 
       ulong ticket = (ulong)PositionGetInteger(POSITION_TICKET);
