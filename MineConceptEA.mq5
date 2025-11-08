@@ -3,6 +3,7 @@
 #property strict
 
 #include <Trade/Trade.mqh>
+#include <Trade/PositionInfo.mqh>
 
 input double InpBandwidth       = 0.15;  // Bandwidth
 input double InpMultiplier      = 0.1;   // Multiplier
@@ -11,8 +12,9 @@ input double InpRiskPercent     = 2.0;   // Risk percent per trade (unused place
 input double InpRRRatio         = 5.0;   // Risk reward ratio (unused placeholder to mirror Pine inputs)
 input double InpTrailingPercent = 5.0;   // Trailing stop percent
 
-const int WINDOW_SIZE  = 500;
-const int LOOKBACK_LEN = 499;
+const int WINDOW_SIZE    = 500;
+const int LOOKBACK_LEN   = 499;
+const int REQUIRED_BARS  = WINDOW_SIZE + LOOKBACK_LEN;
 
 CTrade trade;
 
@@ -87,13 +89,19 @@ bool IsNewBar()
 //+------------------------------------------------------------------+
 double ComputeSmoothedValue(const double &closes[], const int shift)
 {
-   double sum = 0.0;
+   double sum   = 0.0;
+   double denom = 0.0;
+   int total = ArraySize(closes);
    for(int i = 0; i < WINDOW_SIZE; ++i)
    {
       int index = shift + i;
-      sum += closes[index] * g_weights[i];
+      if(index >= total)
+         break;
+      sum   += closes[index] * g_weights[i];
+      denom += g_weights[i];
    }
-   return(sum / g_denominator);
+   double divider = (denom > 0.0) ? denom : g_denominator;
+   return(sum / divider);
 }
 
 //+------------------------------------------------------------------+
@@ -101,13 +109,12 @@ double ComputeSmoothedValue(const double &closes[], const int shift)
 //+------------------------------------------------------------------+
 void ProcessSignals()
 {
-   const int required_bars = WINDOW_SIZE + LOOKBACK_LEN;
-   if(Bars(_Symbol, _Period) <= required_bars)
+   if(iBars(_Symbol, _Period) <= REQUIRED_BARS)
       return;
 
    double close_prices[];
    ArraySetAsSeries(close_prices, true);
-   if(CopyClose(_Symbol, _Period, 0, required_bars, close_prices) != required_bars)
+   if(CopyClose(_Symbol, _Period, 0, REQUIRED_BARS, close_prices) != REQUIRED_BARS)
       return;
 
    double smoothed_values[];
@@ -226,7 +233,7 @@ void ManageTrailingStops()
 
    double mid_price = (bid + ask) / 2.0;
    double trail_fraction = InpTrailingPercent / 100.0;
-   double trail_distance = mid_price * trail_fraction / 100.0;
+   double trail_distance = mid_price * trail_fraction;
    if(trail_distance <= 0.0)
       return;
 
